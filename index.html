@@ -1,0 +1,553 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta property="og:title" content="Arpan Kachhadiya | Unreal Gameplay Programmer">
+<meta property="og:description" content="Melee combat systems, Niagara VFX and flight-sim environment systems in Unreal Engine 5.">
+<meta property="og:image" content="media/combat-hero.jpg">
+<style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Arpan Kachhadiya</title>
+<meta name="description" content="Arpan Kachhadiya: Unreal Engine gameplay programmer. Melee combat systems, Niagara VFX and simulation environments in UE5.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800;900&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a game-editor "viewport" language. Media sits in framed viewports with corner ticks and mono HUD labels;
+   text runs in a narrow column beside it. One loud colour (afterburner amber), everything else slate. */
+:root{
+  --bg:#0b0f15;          /* hangar night, blue-biased near-black */
+  --surface:#121925;     /* panels */
+  --line:#223044;        /* hairlines, frames */
+  --fg:#e7edf5;          /* runway white */
+  --muted:#8d9bb0;       /* secondary text, 7:1 on bg */
+  --accent:#ffa040;      /* afterburner amber */
+  --accent-ink:#1a0f02;  /* text on amber */
+  --papi-red:#ff4f45;    /* approach-light red, used only in the PAPI indicator */
+
+  --f-display:"Big Shoulders Display","Arial Narrow","Roboto Condensed",Impact,sans-serif;
+  --f-body:"Barlow","Segoe UI",system-ui,-apple-system,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+
+  /* type scale, 1.25 ratio from 16px */
+  --t-xs:.8rem; --t-sm:.9rem; --t-base:1.0625rem; --t-md:1.25rem; --t-lg:1.6rem; --t-xl:2.4rem; --t-hero:clamp(3rem,7vw,6.25rem);
+  /* spacing, 4px base */
+  --s-1:4px; --s-2:8px; --s-3:12px; --s-4:16px; --s-5:24px; --s-6:32px; --s-7:48px; --s-8:72px; --s-9:112px;
+  --gutter:clamp(16px,4vw,40px);
+  --maxw:1200px;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:72px}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:var(--t-base);line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:2px}
+::selection{background:var(--accent);color:var(--accent-ink)}
+.wrap{max-width:var(--maxw);margin-inline:auto;padding-inline:var(--gutter)}
+.mono{font-family:var(--f-mono);font-size:var(--t-xs);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+h1,h2,h3{font-family:var(--f-display);font-weight:800;line-height:.95;letter-spacing:.01em;text-wrap:balance;margin:0;text-transform:uppercase}
+p{margin:0}
+.skip{position:absolute;left:-999px;top:8px;background:var(--accent);color:var(--accent-ink);padding:8px 12px;z-index:100;font-weight:600}
+.skip:focus{left:8px}
+
+/* ---------- nav ---------- */
+.nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:50;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.nav .wrap{display:flex;align-items:center;gap:var(--s-5);height:60px}
+.brand{font-family:var(--f-display);font-weight:900;font-size:1.35rem;text-decoration:none;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
+.brand span{color:var(--accent)}
+.nav ul{display:flex;gap:var(--s-5);list-style:none;margin:0 0 0 auto;padding:0}
+.nav ul a{text-decoration:none;font-family:var(--f-mono);font-size:var(--t-xs);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:6px 0;border-bottom:1px solid transparent}
+.nav ul a:hover,.nav ul a[aria-current="true"]{color:var(--fg);border-color:var(--accent)}
+.papi{display:flex;gap:5px;align-items:center}
+.papi i{width:9px;height:9px;border-radius:50%;background:var(--fg);box-shadow:0 0 8px color-mix(in srgb,var(--fg) 60%,transparent);transition:background .3s,box-shadow .3s}
+.papi i.red{background:var(--papi-red);box-shadow:0 0 8px var(--papi-red)}
+@media (max-width:760px){.nav ul{display:none}.papi{margin-left:auto}}
+
+/* ---------- buttons ---------- */
+.btn{display:inline-flex;align-items:center;gap:10px;font-family:var(--f-mono);font-size:var(--t-sm);letter-spacing:.06em;text-transform:uppercase;text-decoration:none;padding:14px 22px;border:1px solid var(--line);color:var(--fg);background:transparent;cursor:pointer;transition:border-color .2s,background .2s,color .2s}
+.btn:hover{border-color:var(--fg)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:500}
+.btn.primary:hover{background:var(--fg);border-color:var(--fg)}
+.btn svg{width:14px;height:14px}
+
+/* ---------- viewport frame (shared by every video) ---------- */
+.vp{position:relative;background:var(--surface);border:1px solid var(--line);aspect-ratio:16/10;max-width:100%;overflow:hidden}
+.vp video,.vp img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.vp::before,.vp::after{content:"";position:absolute;width:18px;height:18px;border:2px solid var(--accent);z-index:2;pointer-events:none}
+.vp::before{top:8px;left:8px;border-right:0;border-bottom:0}
+.vp::after{bottom:8px;right:8px;border-left:0;border-top:0}
+.hud{position:absolute;z-index:2;left:12px;bottom:10px;right:12px;display:flex;justify-content:space-between;gap:8px;font-family:var(--f-mono);font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--fg);text-shadow:0 1px 3px #000,0 0 8px #000;pointer-events:none}
+.hud .rec::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--papi-red);margin-right:6px;vertical-align:1px}
+.vp button.play{position:absolute;inset:0;z-index:3;background:transparent;border:0;cursor:pointer}
+.vp button.play span{position:absolute;top:12px;right:12px;font-family:var(--f-mono);font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;background:color-mix(in srgb,var(--bg) 75%,transparent);color:var(--fg);padding:4px 8px;border:1px solid var(--line);opacity:0;transition:opacity .2s}
+.vp:hover button.play span,.vp button.play:focus-visible span{opacity:1}
+
+/* ---------- hero ---------- */
+.hero{padding-block:var(--s-8) var(--s-8);position:relative}
+.hero .wrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:var(--s-7);align-items:center}
+.hero h1{overflow-wrap:anywhere;font-size:var(--t-hero);font-weight:900;line-height:.86}
+.hero h1 .last{display:block;color:transparent;-webkit-text-stroke:1.5px var(--fg)}
+.role{margin-top:var(--s-5);display:flex;flex-wrap:wrap;gap:var(--s-2) var(--s-4);align-items:center}
+.role strong{font-family:var(--f-display);font-weight:800;font-size:var(--t-lg);text-transform:uppercase;letter-spacing:.02em;color:var(--accent)}
+.value{margin-top:var(--s-5);font-size:var(--t-md);line-height:1.45;max-width:30ch;color:var(--fg)}
+.cta{margin-top:var(--s-6);display:flex;flex-wrap:wrap;gap:var(--s-3)}
+.status{margin-top:var(--s-5);display:flex;align-items:center;gap:var(--s-2)}
+.status::before{content:"";width:8px;height:8px;border-radius:50%;background:#5fd38d;box-shadow:0 0 0 4px color-mix(in srgb,#5fd38d 20%,transparent)}
+@media (max-width:900px){.hero .wrap{grid-template-columns:minmax(0,1fr)}.hero{padding-block:var(--s-7)}.hero h1{font-size:clamp(2.4rem,12vw,6rem)}}
+
+/* readout strip */
+.readout{border-block:1px solid var(--line)}
+.readout ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr))}
+.readout li{padding:var(--s-5) var(--s-4);border-left:1px solid var(--line);display:flex;flex-direction:column;gap:4px;min-width:0}
+.readout li:first-child{border-left:0;padding-left:0}
+.readout b{font-family:var(--f-display);font-weight:800;font-size:var(--t-xl);line-height:1;font-variant-numeric:tabular-nums}
+.readout b small{font-size:.5em;color:var(--muted);margin-left:2px}
+@media (max-width:900px){.readout ul{grid-template-columns:repeat(2,minmax(0,1fr))}.readout li{border-left:0;padding-left:0;border-top:1px solid var(--line)}.readout li:nth-child(-n+2){border-top:0}}
+
+/* ---------- sections ---------- */
+section{padding-block:var(--s-9) 0}
+.sec-head{display:flex;align-items:baseline;justify-content:space-between;gap:var(--s-4);flex-wrap:wrap;margin-bottom:var(--s-7);border-bottom:1px solid var(--line);padding-bottom:var(--s-4)}
+.sec-head h2{font-size:clamp(2.4rem,6vw,4.2rem)}
+
+/* ---------- projects ---------- */
+.proj{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:var(--s-7);padding-bottom:var(--s-8);margin-bottom:var(--s-8);border-bottom:1px solid var(--line)}
+.proj:last-of-type{border-bottom:0;margin-bottom:0}
+.proj.flip .media{order:2}
+.proj-body{display:flex;flex-direction:column;gap:var(--s-4);min-width:0}
+.proj h3{font-size:clamp(2rem,4vw,3rem)}
+.meta{display:flex;flex-wrap:wrap;gap:6px 14px}
+.problem{border-left:2px solid var(--accent);padding-left:var(--s-4);color:var(--fg)}
+.problem .mono{display:block;margin-bottom:2px;color:var(--accent)}
+.proj ul.pts{margin:0;padding-left:1.1em;color:var(--muted);display:grid;gap:6px}
+.proj ul.pts li::marker{color:var(--accent)}
+.proj ul.pts strong{color:var(--fg);font-weight:600}
+.tags{display:flex;flex-wrap:wrap;gap:6px;list-style:none;margin:0;padding:0}
+.tags li{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.04em;padding:4px 8px;border:1px solid var(--line);color:var(--fg);background:var(--surface)}
+.links{display:flex;flex-wrap:wrap;gap:var(--s-4);margin-top:var(--s-2)}
+.links a{font-family:var(--f-mono);font-size:var(--t-sm);letter-spacing:.04em;text-transform:uppercase;text-decoration:none;border-bottom:1px solid var(--accent);padding-bottom:2px}
+.links a:hover{color:var(--accent)}
+.links .na{font-family:var(--f-mono);font-size:var(--t-sm);color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.thumbs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s-2);margin-top:var(--s-2)}
+.thumbs button{all:unset;cursor:pointer;display:flex;flex-direction:column;gap:4px;min-width:0}
+.thumbs img{width:100%;aspect-ratio:16/10;object-fit:cover;border:1px solid var(--line);opacity:.55;transition:opacity .2s,border-color .2s}
+.thumbs button:hover img,.thumbs button[aria-pressed="true"] img{opacity:1;border-color:var(--accent)}
+.thumbs button:focus-visible img{outline:2px solid var(--accent);outline-offset:2px}
+.thumbs span{font-family:var(--f-mono);font-size:.68rem;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:900px){.proj{grid-template-columns:minmax(0,1fr)}.proj.flip .media{order:0}}
+
+/* fx grid */
+.fx-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s-3);margin-top:var(--s-6)}
+.fx-grid .vp{aspect-ratio:16/10}
+.fx-grid figure{margin:0;display:flex;flex-direction:column;gap:6px;min-width:0}
+.fx-grid figcaption{display:flex;justify-content:space-between;gap:8px}
+.fx-grid figcaption b{font-family:var(--f-display);font-weight:800;text-transform:uppercase;font-size:1.05rem;letter-spacing:.02em}
+@media (max-width:900px){.fx-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* liquid loop placeholder art */
+.tubes{position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:center;gap:clamp(10px,3vw,26px);padding:12% 10% 16%;background:radial-gradient(120% 90% at 50% 0%,#1d2a44 0%,var(--surface) 70%)}
+.tube{width:clamp(28px,7vw,54px);height:78%;border:2px solid color-mix(in srgb,var(--fg) 55%,transparent);border-top:0;border-radius:0 0 30px 30px;overflow:hidden;display:flex;flex-direction:column-reverse}
+.tube i{display:block;height:22%}
+.c1{background:#ff5d8f}.c2{background:#3fb6ff}.c3{background:#ffd23f}.c4{background:#7c5cff}
+
+/* earlier work list */
+.mini{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s-5)}
+.mini article{border-top:2px solid var(--line);padding-top:var(--s-4);display:flex;flex-direction:column;gap:var(--s-2);min-width:0}
+.mini h4{margin:0;font-family:var(--f-display);font-weight:800;text-transform:uppercase;font-size:1.35rem;line-height:1.05}
+.mini p{color:var(--muted);font-size:var(--t-sm)}
+@media (max-width:900px){.mini{grid-template-columns:minmax(0,1fr)}}
+
+/* ---------- about ---------- */
+.about{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.6fr);gap:var(--s-7)}
+.about .lede{font-family:var(--f-display);font-weight:800;text-transform:uppercase;font-size:clamp(1.8rem,3.4vw,2.6rem);line-height:1;color:var(--fg)}
+.about .lede em{font-style:normal;color:var(--accent)}
+.about .copy{display:grid;gap:var(--s-4);max-width:62ch;color:var(--muted)}
+.about .copy strong{color:var(--fg);font-weight:600}
+.approach{margin-top:var(--s-5);display:flex;flex-wrap:wrap;gap:6px 0;font-family:var(--f-mono);font-size:var(--t-xs);text-transform:uppercase;letter-spacing:.06em}
+.approach span{color:var(--fg)}
+.approach span:not(:last-child)::after{content:"→";color:var(--accent);margin:0 10px}
+@media (max-width:900px){.about{grid-template-columns:minmax(0,1fr)}}
+
+/* ---------- skills ---------- */
+.skills{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line)}
+.skill{background:var(--bg);padding:var(--s-5);display:flex;flex-direction:column;gap:var(--s-3);min-width:0}
+.skill h3{font-size:1.5rem}
+.skill .mono{color:var(--accent)}
+.skill ul{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.skill li{display:flex;justify-content:space-between;gap:var(--s-3);border-bottom:1px dashed var(--line);padding-bottom:6px}
+.skill li:last-child{border-bottom:0}
+.skill li span:last-child{font-family:var(--f-mono);font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+@media (max-width:900px){.skills{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:560px){.skills{grid-template-columns:minmax(0,1fr)}}
+
+/* ---------- timeline ---------- */
+.tl{list-style:none;margin:0;padding:0;display:grid}
+.tl li{display:grid;grid-template-columns:180px 22px minmax(0,1fr);gap:var(--s-4);padding-bottom:var(--s-6)}
+.tl time{font-family:var(--f-mono);font-size:var(--t-sm);color:var(--muted);text-align:right;padding-top:2px;font-variant-numeric:tabular-nums}
+.tl .rail{position:relative}
+.tl .rail::before{content:"";position:absolute;left:50%;top:6px;width:11px;height:11px;margin-left:-5.5px;border:2px solid var(--accent);border-radius:50%;background:var(--bg)}
+.tl .rail::after{content:"";position:absolute;left:50%;top:22px;bottom:calc(-1 * var(--s-6) + 4px);width:1px;background:var(--line)}
+.tl li:last-child .rail::after{display:none}
+.tl li.edu .rail::before{border-color:var(--muted)}
+.tl h3{font-size:1.5rem;line-height:1.05}
+.tl .org{color:var(--accent);font-weight:600}
+.tl p.d{color:var(--muted);margin-top:var(--s-2);max-width:62ch}
+@media (max-width:640px){.tl li{grid-template-columns:16px minmax(0,1fr)}.tl time{grid-column:2;text-align:left;order:-1}.tl .rail{grid-row:1/3;grid-column:1}.tl li>div:last-child{grid-column:2}}
+
+/* ---------- contact ---------- */
+footer{margin-top:var(--s-9);border-top:1px solid var(--line);padding-block:var(--s-8) var(--s-6);background:linear-gradient(180deg,var(--surface),var(--bg))}
+footer h2{font-size:clamp(2.6rem,8vw,6rem);line-height:.88}
+footer h2 span{color:var(--accent)}
+.contact{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:var(--s-7);align-items:end}
+.contact p.lead{margin-top:var(--s-4);color:var(--muted);max-width:44ch}
+.chan{list-style:none;margin:0;padding:0;display:grid;gap:0;border-top:1px solid var(--line)}
+.chan li{display:grid;grid-template-columns:90px minmax(0,1fr) auto;gap:var(--s-3);align-items:center;padding-block:14px;border-bottom:1px solid var(--line)}
+.chan a,.chan .val{font-size:var(--t-base);text-decoration:none;overflow-wrap:anywhere;user-select:all}
+.chan a{user-select:auto}
+.chan a:hover{color:var(--accent)}
+.copy-btn{font-family:var(--f-mono);font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;background:transparent;color:var(--muted);border:1px solid var(--line);padding:5px 9px;cursor:pointer}
+.copy-btn:hover{color:var(--fg);border-color:var(--fg)}
+.fine{margin-top:var(--s-7);display:flex;justify-content:space-between;flex-wrap:wrap;gap:var(--s-3)}
+@media (max-width:900px){.contact{grid-template-columns:minmax(0,1fr)}}
+
+/* load-in: visible at rest, small lift only */
+@media (prefers-reduced-motion:no-preference){
+  .hero h1,.hero .role,.hero .value,.hero .cta{animation:rise .7s cubic-bezier(.2,.7,.2,1) both}
+  .hero .role{animation-delay:.08s}.hero .value{animation-delay:.16s}.hero .cta{animation-delay:.24s}
+  @keyframes rise{from{transform:translateY(14px)}to{transform:none}}
+}
+</style>
+</head>
+<body>
+
+
+<a class="skip" href="#work">Skip to projects</a>
+
+<nav class="nav" aria-label="Primary">
+  <div class="wrap">
+    <a class="brand" href="#top">Arpan<span>.</span>K</a>
+    <ul>
+      <li><a href="#work">Work</a></li>
+      <li><a href="#about">About</a></li>
+      <li><a href="#skills">Skills</a></li>
+      <li><a href="#experience">Experience</a></li>
+      <li><a href="#contact">Contact</a></li>
+    </ul>
+    <div class="papi" aria-hidden="true" title="PAPI approach lights: they turn red as you scroll down the page"><i></i><i></i><i></i><i></i></div>
+  </div>
+</nav>
+
+<main id="top">
+  <!-- ================= HERO ================= -->
+  <header class="hero">
+    <div class="wrap">
+      <div>
+        <p class="mono">Surat, India · open to roles in India and abroad</p>
+        <h1 style="margin-top:var(--s-4)">Arpan <span class="last">Kachhadiya</span></h1>
+        <div class="role">
+          <strong>Unreal Gameplay Programmer</strong>
+          <span class="mono">UE5 · Blueprints · C++ · Niagara</span>
+        </div>
+        <p class="value">I build the systems that make a game feel physical: combat that reads at a glance, and worlds that react to what moves through them.</p>
+        <div class="cta">
+          <a class="btn primary" href="#work">See the work
+            <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 2v12M3 9l5 5 5-5" stroke="currentColor" stroke-width="1.6"/></svg></a>
+          <a class="btn" href="#contact">Get in touch</a>
+        </div>
+        <p class="status mono">Available now · full-time</p>
+      </div>
+      <div class="vp" data-video>
+        <video src="media/combat-hero.mp4" poster="media/combat-hero.jpg" muted loop playsinline preload="metadata" aria-label="Gameplay capture: the player character fighting a group of AI enemies"></video>
+        <div class="hud"><span class="rec">UE 5.7 · PIE capture</span><span>Melee combat system</span></div>
+      </div>
+    </div>
+  </header>
+
+  <div class="readout">
+    <div class="wrap">
+      <ul>
+        <li><b>6<small>mo</small></b><span class="mono">Unreal internship, Akiyam</span></li>
+        <li><b>20<small>km</small></b><span class="mono">Runway light range</span></li>
+        <li><b>10+</b><span class="mono">Niagara aircraft FX</span></li>
+        <li><b>4</b><span class="mono">Game modes, combat project</span></li>
+        <li><b>50+</b><span class="mono">Play Store installs</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ================= WORK ================= -->
+  <section id="work" aria-labelledby="work-h">
+    <div class="wrap">
+      <div class="sec-head"><h2 id="work-h">Selected work</h2><span class="mono">4 projects · 2023 to 2026</span></div>
+
+      <!-- Project 1: Combat -->
+      <article class="proj" aria-labelledby="p1">
+        <div class="media">
+          <div class="vp" data-video id="combat-main">
+            <video src="media/combat-group.mp4" poster="media/combat-group.jpg" muted loop playsinline preload="none" aria-label="Combat system gameplay capture"></video>
+            <div class="hud"><span class="rec">PIE capture</span><span id="combat-label">Attack tokens</span></div>
+          </div>
+          <div class="thumbs" role="group" aria-label="Choose a combat clip">
+            <button type="button" aria-pressed="true" data-src="media/combat-group" data-label="Attack tokens"><img src="media/combat-group.jpg" alt=""><span>Attack tokens</span></button>
+            <button type="button" aria-pressed="false" data-src="media/combat-parry" data-label="1v1 duel"><img src="media/combat-parry.jpg" alt=""><span>1v1 duel</span></button>
+            <button type="button" aria-pressed="false" data-src="media/combat-lock" data-label="Counter prompt"><img src="media/combat-lock.jpg" alt=""><span>Counter prompt</span></button>
+            <button type="button" aria-pressed="false" data-src="media/combat-hero" data-label="Crowd encounter"><img src="media/combat-hero.jpg" alt=""><span>Crowd</span></button>
+          </div>
+        </div>
+        <div class="proj-body">
+          <div class="meta"><span class="mono">Personal project</span><span class="mono">UE 5.7</span><span class="mono">2026</span></div>
+          <h3 id="p1">Third-person melee combat</h3>
+          <p class="problem"><span class="mono">Problem</span>Group fights fall apart when every enemy attacks at once. This system decides who gets to swing, and makes each hit land with weight.</p>
+          <ul class="pts">
+            <li><strong>Component-based</strong> combat, with attacks defined in data tables so new moves need no new code</li>
+            <li><strong>Paired parry and counter</strong> animations aligned with Motion Warping, plus directional hit reactions</li>
+            <li><strong>Group AI</strong> on Behavior Trees and EQS, with an attack-token system that limits how many enemies engage at once</li>
+            <li>Lock-on targeting, a boss fight, <strong>4 game modes</strong>, UMG HUD and menus, packaged Windows build</li>
+          </ul>
+          <ul class="tags" aria-label="Tech used"><li>Unreal Engine 5.7</li><li>Blueprints</li><li>Behavior Trees</li><li>EQS</li><li>Motion Warping</li><li>UMG</li><li>Data Tables</li></ul>
+          <div class="links"><a href="#contact">Request the Windows build</a><span class="na">Source: on request</span></div>
+        </div>
+      </article>
+
+      <!-- Project 2: Simulation environment -->
+      <article class="proj flip" aria-labelledby="p2">
+        <div class="media">
+          <div class="vp" data-video>
+            <video src="media/fx-wedgecloud.mp4" poster="media/fx-wedgecloud.jpg" muted loop playsinline preload="none" aria-label="A wedge-shaped volumetric cloud being reshaped at runtime"></video>
+            <div class="hud"><span class="rec">Editor capture · 2× speed</span><span>Wedge cloud, MPC driven</span></div>
+          </div>
+          <div class="thumbs" role="group" aria-label="Choose an environment clip" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+            <button type="button" aria-pressed="true" data-src="media/fx-wedgecloud" data-label="Wedge cloud, MPC driven"><img src="media/fx-wedgecloud.jpg" alt=""><span>Wedge cloud</span></button>
+            <button type="button" aria-pressed="false" data-src="media/fx-rotorwater" data-label="Rotor wash on FluidFlux water"><img src="media/fx-rotorwater.jpg" alt=""><span>Rotor wash, water</span></button>
+            <button type="button" aria-pressed="false" data-src="media/fx-grass" data-label="Rotor wash on dynamic grass"><img src="media/fx-grass.jpg" alt=""><span>Rotor wash, grass</span></button>
+          </div>
+        </div>
+        <div class="proj-body">
+          <div class="meta"><span class="mono">Akiyam Solutions · internship</span><span class="mono">UE 5.3 / 5.6 / 5.7</span><span class="mono">2026</span></div>
+          <h3 id="p2">Flight-sim environment systems</h3>
+          <p class="problem"><span class="mono">Problem</span>Unreal's defaults give one uniform cloud layer, water and grass that ignore aircraft, and runway lights that vanish at approach range. Training sims need all three to behave.</p>
+          <ul class="pts">
+            <li><strong>Wedge-shaped volumetric cloud</strong>: modified the engine cloud material with a BoxMask-3D boundary, with position, extent, rotation, slope, density and erosion all set at runtime through a Material Parameter Collection</li>
+            <li><strong>Rotor wash</strong> in Niagara that only spawns below 3000 UU and gets stronger as the helicopter descends</li>
+            <li>The same downwash value drives <strong>circular ripples</strong> on FluidFlux water (6 force sources orbiting the aircraft) and <strong>radial grass bending</strong></li>
+            <li><strong>Runway lights readable at ~20 km</strong> without blowing out up close (distance-scaled sprites), placed with PCG at 60 m spacing, plus a 4-unit <strong>PAPI</strong> with correct white/red indication</li>
+          </ul>
+          <ul class="tags" aria-label="Tech used"><li>Niagara</li><li>Material Editor</li><li>MPC</li><li>Volumetric Clouds</li><li>FluidFlux</li><li>PCG</li><li>Blueprints</li></ul>
+          <div class="links"><span class="na">Client work · details in internship report</span></div>
+        </div>
+      </article>
+
+      <!-- Project 3: Aircraft VFX -->
+      <article aria-labelledby="p3" style="padding-bottom:var(--s-8);margin-bottom:var(--s-8);border-bottom:1px solid var(--line)">
+        <div class="proj-body" style="max-width:760px">
+          <div class="meta"><span class="mono">Akiyam Solutions · internship</span><span class="mono">Niagara</span><span class="mono">2026</span></div>
+          <h3 id="p3" style="font-size:clamp(2rem,4vw,3rem)">Aircraft VFX library</h3>
+          <p class="problem"><span class="mono">Problem</span>A fighter-jet sim needs effects for every flight state, and each one has to trigger from aircraft data instead of being placed by hand.</p>
+          <ul class="tags" aria-label="Tech used"><li>Niagara</li><li>Materials</li><li>Blueprints</li><li>Sprite &amp; ribbon emitters</li></ul>
+        </div>
+        <div class="fx-grid">
+          <figure><div class="vp" data-video><video src="media/fx-sonicboom.mp4" poster="media/fx-sonicboom.jpg" muted loop playsinline preload="none" aria-label="Sonic boom vapor cone effect"></video></div><figcaption><b>Sonic boom</b><span class="mono">vapor cone</span></figcaption></figure>
+          <figure><div class="vp" data-video><video src="media/fx-contrails.mp4" poster="media/fx-contrails.jpg" muted loop playsinline preload="none" aria-label="Contrails behind aircraft"></video></div><figcaption><b>Contrails</b><span class="mono">ribbons</span></figcaption></figure>
+          <figure><div class="vp" data-video><video src="media/fx-afterburner.mp4" poster="media/fx-afterburner.jpg" muted loop playsinline preload="none" aria-label="Afterburner exhaust effect"></video></div><figcaption><b>Afterburner</b><span class="mono">exhaust</span></figcaption></figure>
+          <figure><div class="vp" data-video><video src="media/fx-aero.mp4" poster="media/fx-aero.jpg" muted loop playsinline preload="none" aria-label="Aerodynamic condensation over the wings"></video></div><figcaption><b>Aerodynamics</b><span class="mono">wing vapor</span></figcaption></figure>
+          <figure><div class="vp" data-video><video src="media/fx-flares.mp4" poster="media/fx-flares.jpg" muted loop playsinline preload="none" aria-label="Countermeasure flares with smoke trails"></video></div><figcaption><b>Flares</b><span class="mono">countermeasure</span></figcaption></figure>
+          <figure><div class="vp" data-video><video src="media/fx-rotorwater.mp4" poster="media/fx-rotorwater.jpg" muted loop playsinline preload="none" aria-label="Helicopter rotor wash rippling a water surface"></video></div><figcaption><b>Rotor wash</b><span class="mono">water</span></figcaption></figure>
+          <figure><div class="vp" data-video><video src="media/fx-grass.mp4" poster="media/fx-grass.jpg" muted loop playsinline preload="none" aria-label="Grass bending under rotor downwash"></video></div><figcaption><b>Downwash</b><span class="mono">grass</span></figcaption></figure>
+          <figure><div class="vp" data-video><video src="media/fx-wedgecloud.mp4" poster="media/fx-wedgecloud.jpg" muted loop playsinline preload="none" aria-label="Wedge cloud formation"></video></div><figcaption><b>Wedge cloud</b><span class="mono">volumetric</span></figcaption></figure>
+        </div>
+        <p class="mono" style="margin-top:var(--s-4)">Also built: heat distortion, wingtip vortices, landing sparks, propulsion, three sonic boom variants.</p>
+      </article>
+
+      <!-- Project 4: Liquid Loop -->
+      <article class="proj" aria-labelledby="p4">
+        <div class="media">
+          <div class="vp" role="img" aria-label="Placeholder art: four liquid-sorting tubes. Replace with a Liquid Loop screenshot.">
+            <div class="tubes">
+              <div class="tube"><i class="c1"></i><i class="c2"></i><i class="c1"></i><i class="c3"></i></div>
+              <div class="tube"><i class="c2"></i><i class="c4"></i><i class="c3"></i></div>
+              <div class="tube"><i class="c4"></i><i class="c1"></i><i class="c2"></i><i class="c4"></i></div>
+              <div class="tube"><i class="c3"></i><i class="c3"></i></div>
+              <div class="tube"></div>
+            </div>
+            <div class="hud"><span>Placeholder · swap for screenshot</span><span>Android</span></div>
+          </div>
+        </div>
+        <div class="proj-body">
+          <div class="meta"><span class="mono">Solo · published as Orestro</span><span class="mono">Unity · C#</span><span class="mono">Google Play</span></div>
+          <h3 id="p4">Liquid Loop</h3>
+          <p class="problem"><span class="mono">Problem</span>Ship a complete mobile game alone, from mechanic to store listing, and keep players coming back after the first session.</p>
+          <ul class="pts">
+            <li>Colour-sorting pour logic with fast, smooth transitions, across <strong>Easy, Medium, Hard and Expert</strong> difficulties</li>
+            <li><strong>Unity Cloud Services</strong> for player saves, server-side level data and milestone rewards</li>
+            <li>Ran the full pipeline: concept, mechanics, UI, testing, polish, release. <strong>50+ installs</strong>, no data collected</li>
+          </ul>
+          <ul class="tags" aria-label="Tech used"><li>Unity</li><li>C#</li><li>Unity Cloud Save</li><li>Unity Gaming Services</li><li>Android</li></ul>
+          <div class="links"><a href="https://play.google.com/store/apps/details?id=com.orestro.liquidloop" target="_blank" rel="noopener">Play Store ↗</a></div>
+        </div>
+      </article>
+
+      <!-- Earlier Unity work -->
+      <div style="margin-top:var(--s-8)">
+        <p class="mono" style="margin-bottom:var(--s-5)">Earlier Unity work · Web Ashlar internship, 2023</p>
+        <div class="mini">
+          <article><h4>Stumble Guys-style multiplayer prototype</h4><p>Rebuilt the core physics: ragdolls, momentum-based movement, obstacle collisions, portal mechanics, character skins. Levels designed from scratch.</p></article>
+          <article><h4>Phone Case DIY</h4><p>Casual simulator built in a 2-person team. Made the acrylic and spray paint, sticker, keychain and dryer tools, plus their configuration and UI flows.</p></article>
+          <article><h4>Metaverse virtual mall</h4><p>Helped build an explorable virtual shopping space and coordinate its systems across a larger team.</p></article>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= ABOUT ================= -->
+  <section id="about" aria-labelledby="about-h">
+    <div class="wrap">
+      <div class="sec-head"><h2 id="about-h">About</h2><span class="mono">Gameplay feel over fancy visuals</span></div>
+      <div class="about">
+        <p class="lede">Started in Unity. <em>Moved to Unreal</em> to build the hard stuff.</p>
+        <div>
+          <div class="copy">
+            <p>I started with Unity and C#: a year of building prototypes for movement, physics, health and enemy AI, then publishing my own puzzle game on Google Play. That taught me to finish things, not just start them. In 2026 I moved to <strong>Unreal Engine 5</strong> and spent six months at Akiyam Solutions building effects and environment systems for aviation and defence training sims.</p>
+            <p>The work I enjoy most sits where gameplay and rendering meet. That means an attack-token system that keeps a crowd fight readable, or a rotor wash that tells a pilot how high they are by how hard the grass bends. I'm finishing a B.E. in Information Technology and looking for an <strong>Unreal gameplay programmer</strong> role, in India or abroad.</p>
+          </div>
+          <div class="approach" aria-label="How I work"><span>Break it into systems</span><span>Prototype fast</span><span>Test constantly</span><span>Ship a build</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= SKILLS ================= -->
+  <section id="skills" aria-labelledby="skills-h">
+    <div class="wrap">
+      <div class="sec-head"><h2 id="skills-h">Skills</h2><span class="mono">Grouped by where I use them</span></div>
+      <div class="skills">
+        <div class="skill"><span class="mono">Engines</span><h3>Unreal &amp; Unity</h3><ul>
+          <li><span>Unreal Engine 5</span><span>Primary</span></li><li><span>Blueprints</span><span>Primary</span></li><li><span>Unity</span><span>Shipped</span></li><li><span>Unity Cloud Services</span><span>Shipped</span></li></ul></div>
+        <div class="skill"><span class="mono">Languages</span><h3>Code</h3><ul>
+          <li><span>C#</span><span>Strong</span></li><li><span>C++ (Unreal)</span><span>Learning</span></li><li><span>HLSL via Material graphs</span><span>Working</span></li></ul></div>
+        <div class="skill"><span class="mono">Gameplay</span><h3>Systems</h3><ul>
+          <li><span>Melee combat &amp; hit reactions</span><span></span></li><li><span>Motion Warping, anim montages</span><span></span></li><li><span>Physics &amp; ragdolls</span><span></span></li><li><span>Data-driven design (Data Tables)</span><span></span></li></ul></div>
+        <div class="skill"><span class="mono">AI</span><h3>Enemies</h3><ul>
+          <li><span>Behavior Trees</span><span></span></li><li><span>EQS</span><span></span></li><li><span>Attack-token coordination</span><span></span></li><li><span>Boss encounter design</span><span></span></li></ul></div>
+        <div class="skill"><span class="mono">Tech art</span><h3>VFX &amp; materials</h3><ul>
+          <li><span>Niagara</span><span>Primary</span></li><li><span>Material Editor &amp; MPCs</span><span></span></li><li><span>Volumetric clouds</span><span></span></li><li><span>PCG, FluidFlux</span><span></span></li></ul></div>
+        <div class="skill"><span class="mono">Craft</span><h3>Shipping</h3><ul>
+          <li><span>UMG HUD &amp; menus</span><span></span></li><li><span>Level design</span><span></span></li><li><span>Debugging &amp; optimisation</span><span></span></li><li><span>Packaging &amp; Play Store release</span><span></span></li></ul></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= EXPERIENCE ================= -->
+  <section id="experience" aria-labelledby="exp-h">
+    <div class="wrap">
+      <div class="sec-head"><h2 id="exp-h">Experience</h2><span class="mono">Most recent first</span></div>
+      <ol class="tl">
+        <li><time datetime="2026-07">Jul – Aug 2026</time><span class="rail" aria-hidden="true"></span><div>
+          <h3>Melee combat system</h3><p class="org">Personal project · Unreal Engine 5.7</p>
+          <p class="d">Component-based combat with group AI, a boss fight, four game modes and a packaged Windows build.</p></div></li>
+        <li><time datetime="2026-01">Jan – Jul 2026</time><span class="rail" aria-hidden="true"></span><div>
+          <h3>Unreal Engine Developer Intern</h3><p class="org">Akiyam Solutions Pvt. Ltd. · Vadodara (remote)</p>
+          <p class="d">26 weeks on aviation and defence simulation projects. Built a runtime-controllable volumetric cloud, altitude-driven rotor wash over water and grass, 20 km runway lighting with PAPI, and a library of aircraft Niagara effects, then integrated them into company levels across UE 5.3, 5.6 and 5.7.</p></div></li>
+        <li><time datetime="2025-12">2025</time><span class="rail" aria-hidden="true"></span><div>
+          <h3>Indie developer, Orestro</h3><p class="org">Self-published · Unity</p>
+          <p class="d">Designed, built and shipped Liquid Loop on Google Play, and took on client game projects alongside college.</p></div></li>
+        <li><time datetime="2023-04">Apr – Aug 2023</time><span class="rail" aria-hidden="true"></span><div>
+          <h3>Game Developer Intern</h3><p class="org">Web Ashlar · Surat</p>
+          <p class="d">Worked with senior developers on live Unity projects: a multiplayer party-game prototype, a casual DIY simulator and a metaverse mall. Delivered production-ready builds.</p></div></li>
+        <li class="edu"><time datetime="2027">Expected 2027</time><span class="rail" aria-hidden="true"></span><div>
+          <h3>B.E. Information Technology</h3><p class="org">C. K. Pithawala College of Engineering &amp; Technology, Surat · GTU</p>
+          <p class="d">Internship project: "Environmental Visual Effects and Dynamics in Unreal Engine." Game development itself is self-taught.</p></div></li>
+      </ol>
+    </div>
+  </section>
+</main>
+
+<!-- ================= CONTACT ================= -->
+<footer id="contact" aria-labelledby="contact-h">
+  <div class="wrap">
+    <div class="contact">
+      <div>
+        <p class="mono">Hiring for Unreal gameplay or tech art?</p>
+        <h2 id="contact-h" style="margin-top:var(--s-3)">Let's build <span>something</span> playable.</h2>
+        <p class="lead">A packaged build of the combat project and my internship report are available on request.</p>
+      </div>
+      <ul class="chan">
+        <li><span class="mono">Email</span><a href="mailto:arpan.392004@gmail.com" id="email">arpan.392004@gmail.com</a><button class="copy-btn" type="button" data-copy="arpan.392004@gmail.com">Copy</button></li>
+        <li><span class="mono">Phone</span><span class="val" id="phone">+91 98248 84099</span><button class="copy-btn" type="button" data-copy="+919824884099">Copy</button></li>
+        <li><span class="mono">GitHub</span><a href="https://github.com/ARexDev" target="_blank" rel="noopener">github.com/ARexDev ↗</a><span></span></li>
+        <li><span class="mono">Play</span><a href="https://play.google.com/store/apps/details?id=com.orestro.liquidloop" target="_blank" rel="noopener">Liquid Loop on Google Play ↗</a><span></span></li>
+      </ul>
+    </div>
+    <div class="fine mono"><span>© 2026 Arpan Kachhadiya · Surat, Gujarat</span><span>Always building. Always shipping.</span></div>
+  </div>
+</footer>
+
+<script>
+(() => {
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Videos: play only while on screen (saves bandwidth); click toggles. Reduced motion: start paused.
+  const vids = [...document.querySelectorAll('[data-video] video')];
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      const v = e.target;
+      if (e.isIntersecting && !reduce && !v.dataset.userPaused) { v.preload = 'auto'; v.play().catch(() => {}); }
+      else v.pause();
+    });
+  }, { threshold: 0.35 });
+  vids.forEach(v => {
+    io.observe(v);
+    const b = document.createElement('button');
+    b.className = 'play'; b.type = 'button';
+    b.setAttribute('aria-label', 'Play or pause clip');
+    b.innerHTML = '<span>' + (reduce ? 'Play' : 'Pause') + '</span>';
+    b.addEventListener('click', () => {
+      if (v.paused) { delete v.dataset.userPaused; v.play().catch(() => {}); b.firstChild.textContent = 'Pause'; }
+      else { v.dataset.userPaused = '1'; v.pause(); b.firstChild.textContent = 'Play'; }
+    });
+    v.parentElement.appendChild(b);
+  });
+
+  // Clip switchers under project media
+  document.querySelectorAll('.thumbs').forEach(group => {
+    const vp = group.previousElementSibling;
+    const v = vp.querySelector('video');
+    const label = vp.querySelector('.hud span:last-child');
+    group.addEventListener('click', e => {
+      const btn = e.target.closest('button'); if (!btn) return;
+      group.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === btn));
+      v.poster = btn.dataset.src + '.jpg';
+      v.src = btn.dataset.src + '.mp4';
+      label.textContent = btn.dataset.label;
+      if (!reduce) v.play().catch(() => {});
+    });
+  });
+
+  // Copy buttons (mailto/tel can be blocked in some viewers)
+  document.querySelectorAll('[data-copy]').forEach(b => b.addEventListener('click', () => {
+    const done = () => { b.textContent = 'Copied'; setTimeout(() => b.textContent = 'Copy', 1600); };
+    if (navigator.clipboard) navigator.clipboard.writeText(b.dataset.copy).then(done).catch(() => select(b));
+    else select(b);
+  }));
+  function select(b) {
+    const t = b.previousElementSibling; const r = document.createRange(); r.selectNodeContents(t);
+    const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+  }
+
+  // PAPI indicator: lights go red as you descend the page; current section highlighted in nav.
+  const lights = [...document.querySelectorAll('.papi i')];
+  const links = [...document.querySelectorAll('.nav ul a')];
+  const secs = links.map(a => document.querySelector(a.getAttribute('href')));
+  const onScroll = () => {
+    const max = document.documentElement.scrollHeight - innerHeight;
+    const p = max > 0 ? scrollY / max : 0;
+    const reds = Math.min(4, Math.floor(p * 5));
+    lights.forEach((l, i) => l.classList.toggle('red', i >= 4 - reds));
+    let cur = -1; secs.forEach((s, i) => { if (s && s.getBoundingClientRect().top < innerHeight * 0.4) cur = i; });
+    links.forEach((a, i) => a.setAttribute('aria-current', i === cur));
+  };
+  addEventListener('scroll', onScroll, { passive: true }); onScroll();
+})();
+</script>
+
+</body>
+</html>
